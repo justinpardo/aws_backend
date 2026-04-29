@@ -36,7 +36,7 @@ router.post('/connect', firebaseAuth, async (req: Request, res: Response): Promi
       new URLSearchParams({
         grant_type: 'authorization_code',
         code,
-        redirect_uri: redirectUri || REDIRECT_URI,
+        redirect_uri: (redirectUri as string) || (REDIRECT_URI as string),
       }),
       {
         headers: {
@@ -98,8 +98,7 @@ router.get('/callback', async (req: Request, res: Response): Promise<void> => {
       fitbitUserId: user_id,
     });
 
-    // Redirect back to the app with a success signal
-    res.send('<html><body><h2>Fitbit connected! You can close this window.</h2></body></html>');
+    res.send(`<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=epigenesisaiapp://fitbit-success"><script>window.location.href='epigenesisaiapp://fitbit-success';</script></head><body></body></html>`);
   } catch (err) {
     console.error('Fitbit callback error', err);
     res.status(500).send('Failed to exchange Fitbit token');

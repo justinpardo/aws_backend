@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Epigenesis AWS Backend
+
+Parameters:
+  FirebaseServiceAccount:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /epigenesis/FIREBASE_SERVICE_ACCOUNT
+  FitbitClientId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /epigenesis/FITBIT_CLIENT_ID
+  FitbitClientSecret:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /epigenesis/FITBIT_CLIENT_SECRET
+  FitbitRedirectUri:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /epigenesis/FITBIT_REDIRECT_URI
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: nodejs22.x
+    Environment:
+      Variables:
+        FIREBASE_SERVICE_ACCOUNT: !Ref FirebaseServiceAccount
+        AWS_REGION_NAME: !Ref AWS::Region
+        DYNAMODB_MEALS_TABLE: epigenesis-meals
+        DYNAMODB_WORKOUTS_TABLE: epigenesis-workouts
+        DYNAMODB_FITBIT_TABLE: epigenesis-fitbit-tokens
+        S3_BUCKET: epigenesis-profile-photos
+        FITBIT_CLIENT_ID: !Ref FitbitClientId
+        FITBIT_CLIENT_SECRET: !Ref FitbitClientSecret
+        FITBIT_REDIRECT_URI: !Ref FitbitRedirectUri
+
+Resources:
+  AwsBackendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: epigenesis-aws-backend
+      Handler: dist/lambda.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: epigenesis-meals
+        - DynamoDBCrudPolicy:
+            TableName: epigenesis-workouts
+        - DynamoDBCrudPolicy:
+            TableName: epigenesis-fitbit-tokens
+        - S3CrudPolicy:
+            BucketName: epigenesis-profile-photos
+      Events:
+        ProxyRoot:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+            RestApiId: !Ref AwsBackendApi
+        ProxyAny:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref AwsBackendApi
+
+  AwsBackendApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: epigenesis-aws-backend-api
+      StageName: prod
+
+Outputs:
+  AwsBackendUrl:
+    Description: AWS Backend API URL
+    Value: !Sub 'https://${AwsBackendApi}.execute-api.${AWS::Region}.amazonaws.com/prod'

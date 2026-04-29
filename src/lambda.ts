@@ -1,3 +1,4 @@
+import serverlessExpress from '@codegenie/serverless-express';
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -7,20 +8,14 @@ import fitbitRoutes from './routes/fitbit';
 import uploadRoutes from './routes/upload';
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
-
 app.use('/meals', mealsRoutes);
 app.use('/workouts', workoutsRoutes);
 app.use('/fitbit', fitbitRoutes);
 app.use('/upload', uploadRoutes);
-
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-const PORT = process.env.PORT ?? 3002;
-app.listen(PORT, () => {
-  console.log(`aws_backend running on port ${PORT}`);
-});
+const handler = serverlessExpress({ app });
 
-export default app;
+export { handler };
