@@ -4,7 +4,7 @@ import { firebaseAuth, AuthRequest } from '../middleware/firebaseAuth';
 import { saveFitbitTokens, getFitbitTokens } from '../db/fitbitStore';
 import { addWorkout } from '../db/workoutsStore';
 import { addMeal } from '../db/mealsStore';
-import { getFitbitActivities, getFitbitMeals } from '../services/fitbitApiClient';
+import { getFitbitActivities, getFitbitMeals, getFitbitSleep } from '../services/fitbitApiClient';
 
 const router = Router();
 
@@ -243,11 +243,25 @@ router.get('/sync-meals', firebaseAuth, async (req: Request, res: Response): Pro
   }
 });
 
-interface FitbitTokenResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  user_id: string;
-}
+// GET /fitbit/sleep?date=YYYY-MM-DD — fetch sleep data for a given date
+router.get('/sleep', firebaseAuth, async (req: Request, res: Response): Promise<void> => {
+  const { uid } = req as AuthRequest;
+  const { date } = req.query as { date?: string };
+  const sleepDate = date || new Date().toISOString().split('T')[0];
+
+  try {
+    const tokens = await getFitbitTokens(uid);
+    if (!tokens) {
+      res.status(400).json({ error: 'Not connected to Fitbit' });
+      return;
+    }
+
+    const sleep = await getFitbitSleep(uid, sleepDate);
+    res.json({ sleep });
+  } catch (err: any) {
+    console.error('Sleep fetch error', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch sleep data' });
+  }
+});
 
 export default router;

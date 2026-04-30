@@ -104,6 +104,61 @@ export async function getFitbitMeals(uid: string, date: string): Promise<FitbitN
   }
 }
 
+export interface FitbitSleep {
+  date: string;
+  totalMinutesAsleep: number;
+  totalTimeInBed: number;
+  efficiency: number;
+  stages: {
+    deep: number;
+    light: number;
+    rem: number;
+    wake: number;
+  };
+}
+
+/**
+ * Fetch sleep data from Fitbit API for a specific date
+ */
+export async function getFitbitSleep(uid: string, date: string): Promise<FitbitSleep | null> {
+  const token = await getValidFitbitToken(uid);
+  const tokens = await getFitbitTokens(uid);
+
+  if (!tokens) {
+    throw new Error('Not connected to Fitbit');
+  }
+
+  try {
+    const response = await axios.get(
+      `${FITBIT_API_BASE}/${tokens.fitbitUserId}/sleep/date/${date}.json`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const sleepLog = response.data.sleep?.[0];
+    if (!sleepLog) return null;
+
+    const levels = sleepLog.levels?.summary ?? {};
+    return {
+      date,
+      totalMinutesAsleep: sleepLog.minutesAsleep ?? 0,
+      totalTimeInBed: sleepLog.timeInBed ?? 0,
+      efficiency: sleepLog.efficiency ?? 0,
+      stages: {
+        deep: levels.deep?.minutes ?? 0,
+        light: levels.light?.minutes ?? 0,
+        rem: levels.rem?.minutes ?? 0,
+        wake: levels.wake?.minutes ?? 0,
+      },
+    };
+  } catch (err: any) {
+    console.error('Fitbit sleep fetch error', err.response?.data || err.message);
+    if (err.response?.status === 404) return null;
+    throw err;
+  }
+}
+
 /**
  * Fetch heart rate data from Fitbit API for a specific date
  */
